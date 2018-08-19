@@ -66,7 +66,7 @@ myData %>%
 
 **We observe that most of the stops were being conducted by *white male* officers, followed by *black/African American officers*, followed by *white female* officers. *Asian* and *Hispanic/Latino* officers conducted the least number of stops during 2006.**  
 <br>
-```{r, include = F, eval = F}
+```{r}
 #Summarising officer data by maximum average years of service 
 officersArranged <- myData %>% 
                       select(Officer_Race, Officer_Gender, Officer_Years_of_Service) %>%
@@ -79,22 +79,25 @@ officersArranged %>%
   knitr::kable(col.names = c("Officer Race", "Gender", "Average Years of Service"), format.args = list(big.mark = ","), align = c('c','c','c')) %>% 
     kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width=F)
 ```
-```{r, include = F, eval = F}
+<br>
+```{r}
 officersArranged %>% 
   ggplot() +
   geom_bar(aes(x = reorder(Officer_Race, -Average_Years), y = Average_Years, fill = Officer_Gender), stat = "identity") +
-  coord_flip() +
+  scale_fill_manual(name = "CMPD Division", values = c("Female" = "#9e66ab", "Male" = "#f9a65a")) +
   xlab("Average Years") +
   ylab("Officer race") +
-  ggtitle("Summary of Officer Data by Race and Average Years of Service") +
+  ggtitle("Summary of Officers by Race and Average Years of Service") +
   theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5)) +
+  coord_flip() +
   theme(axis.text=element_text(size=12),
   axis.title=element_text(size=14, face="bold"),
   legend.text=element_text(size=8)) +
-  coord_flip() +
+  ylim(0,11.5) +
+  xlab("Officer Race")+
+  ylab("Average Years")+
   theme(legend.title.align=0.5) +
   theme_bw() +
-  scale_fill_manual("CMPD Division", values = c("Female" = "#9e66ab", "Male" = "#f9a65a")) +
   facet_wrap(~Officer_Gender)
 ```
 
