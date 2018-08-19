@@ -1,0 +1,251 @@
+---
+title: "Exploratory Data Analysis of Officer Traffic Stops"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, tidy.opts=list(width.cutoff=40),tidy=TRUE, warning = F, message = F)
+rm(list=ls())
+cat("\014")
+```
+
+```{r libraryload, include = F, message = F}
+#Load relevant libraries
+library(tidyverse)
+library(knitr)
+library(lattice)
+library(magrittr)
+library(reshape2)
+library(scales)
+library(RColorBrewer)
+library(kableExtra)
+```
+
+```{r, message=F}
+#Reading csv file
+myData <- read_csv("Officer_Traffic_Stops.csv")
+```
+<br>
+On a first glance at the data, we can see that this data covers traffic stops by police officers in Charlotte, North Carolina over the year 2016. Let's explore first the race, gender and years of service of officers.    
+<br>
+```{r}
+#Summarising officer race and gender data 
+myData %>%
+      group_by(Officer_Race, Officer_Gender) %>% 
+        na.omit() %>% 
+            count %>% 
+              arrange(desc(n)) %>% 
+                knitr::kable(col.names = c("Officer Race", "Officer Gender", "Count"), format.args = list(big.mark = (",")), align = c('c','c','c')) %>% 
+                  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width=F)
+```
+
+We omit the `NA`s in the data, because we can see that there are `r sum(is.na(myData$Officer_Race))` `NA`s in the data. Also, there are unspecified data for officer races of `r length(myData$Officer_Race[which(myData$Officer_Race == "Not Specified")])` officers.    
+<br>
+
+```{r}
+myData %>% 
+    group_by(Officer_Race, Officer_Gender) %>%
+    na.omit() %>%
+      summarise(Count = length(Officer_Race)) %>% 
+      ggplot() +
+      geom_bar(aes(x=Officer_Race, y = Count/1000, fill = Officer_Gender), stat = "identity", position = "dodge") +
+      coord_flip() +
+      xlab("Officer Race\n") +
+      ylab("\nCount (in thousands)") +
+      scale_y_continuous(labels = comma) +
+      ggtitle("Summary of Officer Data by Race and Gender") +
+      theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5)) +
+      coord_flip() +
+      theme(axis.text=element_text(size=12),
+      axis.title=element_text(size=14, face="bold"),
+      legend.text=element_text(size=8)) +
+      theme(legend.title.align=0.5) +
+      scale_fill_manual("Officer Gender", values = c("Female" = "#599ad3", "Male" = "#f9a65a")) +
+      theme_bw()
+```
+
+**We observe that most of the stops were being conducted by *white male* officers, followed by *black/African American officers*, followed by *white female* officers. *Asian* and *Hispanic/Latino* officers conducted the least number of stops during 2006.**  
+<br>
+```{r, include = F, eval = F}
+#Summarising officer data by maximum average years of service 
+officersArranged <- myData %>% 
+                      select(Officer_Race, Officer_Gender, Officer_Years_of_Service) %>%
+                        na.omit() %>%
+                          filter(Officer_Race != "Not Specified") %>% 
+                            group_by(Officer_Race, Officer_Gender) %>% 
+                              summarise(Average_Years = round(mean(Officer_Years_of_Service),0)) %>% 
+                                arrange(desc(Average_Years)) 
+officersArranged %>% 
+  knitr::kable(col.names = c("Officer Race", "Gender", "Average Years of Service"), format.args = list(big.mark = ","), align = c('c','c','c')) %>% 
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width=F)
+```
+```{r, include = F, eval = F}
+officersArranged %>% 
+  ggplot() +
+  geom_bar(aes(x = reorder(Officer_Race, -Average_Years), y = Average_Years, fill = Officer_Gender), stat = "identity") +
+  coord_flip() +
+  xlab("Average Years") +
+  ylab("Officer race") +
+  ggtitle("Summary of Officer Data by Race and Average Years of Service") +
+  theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5)) +
+  theme(axis.text=element_text(size=12),
+  axis.title=element_text(size=14, face="bold"),
+  legend.text=element_text(size=8)) +
+  coord_flip() +
+  theme(legend.title.align=0.5) +
+  theme_bw() +
+  scale_fill_manual("CMPD Division", values = c("Female" = "#9e66ab", "Male" = "#f9a65a")) +
+  facet_wrap(~Officer_Gender)
+```
+
+Now, let us summarise and visualize the officer data by their respective CMPD divisions.    
+<br>
+```{r}
+#Summarising officer data by CMPD division 
+myData %>% 
+  filter(Officer_Race != "Not Specified") %>%
+    na.omit() %>%
+      group_by(CMPD_Division) %>% 
+        count %>% 
+          arrange(desc(n))  %>% 
+            knitr::kable(col.names = c("CMPD Division", "Count"), format.args = list(big.mark = (",")), align = c('c','c')) %>% 
+              kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width=F)
+```
+
+We observe that there is a high number of `NA`s in the CMPD Division data of officers, which is `r sum(is.na(myData$CMPD_Division))`. 
+**We also observe that the highest number of officers were from *South Division*, *Providence Division*, *North Division*, *Westover Division* and *Hickory Grove Division* respectively in decreasing numbers.**
+
+Let us know visualize the officer data that we have previously summarized.  
+<br>
+```{r}
+myData %>%
+    na.omit() %>%
+      filter(Officer_Race != "Not Specified") %>%
+        group_by(Officer_Race, CMPD_Division) %>% 
+        count %>% 
+        ggplot() +
+        geom_bar(mapping = aes(x = Officer_Race, fill = CMPD_Division, y = n/1000), stat = "identity", position = "dodge") +
+        scale_fill_discrete(name = "CMPD Division") +
+        xlab("Officer Race\n") +
+        ylab("\nCount (in thousands)") +
+        scale_y_continuous(labels = comma) +
+        ggtitle("Summary of Officer Data by Race and CMPD division") +
+        theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5)) +
+        coord_flip() +
+        theme(axis.text=element_text(size=12),
+        axis.title=element_text(size=14, face="bold"),
+        legend.text=element_text(size=8)) +
+        theme(legend.title.align=0.5) +
+        theme_bw()
+```
+
+**We observe that the highest number of stops were being conducted by officers of *white* race from the "South Division", followed by *Providence Division* and *Hickory Grove Division*. A lot of stops were also being conducted by *black/African American* officers.**
+
+Let us now visualize the number of stops by months of 2016.  
+<br>
+```{r}
+#Renaming months by creating factors
+myData$Month_of_Stop <- as.factor(myData$Month_of_Stop)
+levels(myData$Month_of_Stop) <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+myData %>% 
+  group_by(Month_of_Stop, Reason_for_Stop) %>% 
+    count %>% 
+      ggplot() +
+      geom_point(aes(x = Month_of_Stop, y = Reason_for_Stop, size = n, colour = n)) +
+      scale_colour_gradient(name = "Number of Stops", low = "grey", high = "black", breaks = seq(0,3000,by=300), labels = comma) +
+      scale_size(name = "Number of Stops", breaks = seq(0,3000,by=300), labels = comma) +
+      guides(colour = guide_legend(), size = guide_legend()) +
+      xlab("\nMonth of Stop (in 2016)") +
+      ylab("Reason for Stop\n") +
+      ggtitle("Summary of Stops by Month and Reason") +
+      theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5)) +
+      theme(axis.text=element_text(size=10),
+      axis.title=element_text(size=12, face="bold"),
+      legend.text=element_text(size=8)) +
+      theme(legend.title.align=0.5)
+```
+
+**We observe that the maximum number of stops occurred for *vehicle regulatory* and *speeding* reasons.**
+
+Now, let us investigate the result of the stops as well as the race/ethnicity and age of the driver.  
+<br>
+```{r}
+#Mutating myData data frame with Driver_Race_Ethnicity variable denoting distinct race and ethnicity 
+myData %<>% mutate(
+  Driver_Race_Ethnicity = paste(Driver_Ethnicity, Driver_Race, sep = " ")
+) 
+
+myData %>% 
+  group_by(Driver_Age, Result_of_Stop, Driver_Race_Ethnicity, Was_a_Search_Conducted) %>% 
+      count %>% 
+      ggplot() +
+      geom_bar(aes(x = Driver_Race_Ethnicity,fill = Result_of_Stop, y = n/1000), stat = "identity") +
+      coord_flip() +
+      xlab("Driver Race and Ethnicity\n") +
+      ylab("\nCount (in thousands)") +
+      ggtitle("Summary of Results of Stops by Driver Race") +
+      theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5)) +
+      theme(axis.text=element_text(size=10),
+      axis.title=element_text(size=12, face="bold"),
+      legend.text=element_text(size=8)) +
+      theme(legend.title.align=0.5) +
+      scale_fill_discrete(name = "Result of Stop")
+```
+
+**We observe that the majority of drivers which were stopped in 2016 were Non-Hispanic Black and Non-Hispanic White. We also observe that the result of the stop was a *verbal warning* followed by *citation issued*. This remained the same for all racial and ethnic groups of people. Let us further dive into the age distribution of these drivers, and whether a search was conducted by the officers.**  
+<br>
+```{r}
+myData %>% 
+    group_by(Driver_Age, Driver_Race_Ethnicity, Was_a_Search_Conducted) %>% 
+      ggplot() +
+      geom_boxplot(aes(x = Driver_Race_Ethnicity, y = Driver_Age)) +
+      coord_flip() +
+      xlab("Driver Age\n") +
+      ylab("\nDriver Race and Ethnicity") +
+      ggtitle("Boxplot of Driver Race/Ethnicity with Age") +
+      theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5)) +
+      theme(axis.text=element_text(size=10),
+      axis.title=element_text(size=12, face="bold"),
+      legend.text=element_text(size=8))
+```
+
+**We can observe from the boxplot above that the drivers belonging to the race and ethnicity group of Non-Hispanic White and Non-Hispanic Black have the highest amount of outliers with respect to age.** We investigate whether a search was conducted for these drivers.  
+<br>
+```{r}
+searchConducted <- myData %>% 
+  filter(Driver_Race_Ethnicity %in% c("Non-Hispanic White", "Non-Hispanic Black")) %>% 
+    group_by(Driver_Race_Ethnicity, Was_a_Search_Conducted) %>% 
+      count(Was_a_Search_Conducted) %>% 
+        arrange(desc(n))
+searchConducted %>% 
+  knitr::kable(col.names = c("Driver Race and Ethnicity", "Search Conducted", "Number"), format.args = list(big.mark = ","), align = c('c','c','c')) %>% 
+    kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width=F)
+```
+
+**We observe that a search was not conducted for `r round(100*40365/(40365+2467),2)`% of Non-Hispanic Black drivers, and for `r round(100*25882/(25882+464),2)`% of Non-Hispanic White drivers, which is a significant percentage of the drivers. We also notice a search was conducted for `r round(100*2467/(40365+2467),2)`% of Non-Hispanic Black drivers, which is significantly higher than `r round(100*25882/(25882+464),2)`% of Non-Hispanic White drivers.**
+
+Let us now explore the reasons of stops which occurred for drivers of Non-Hispanic White and Non-Hispanic Black race and ethnicity. Let us also explore the officers which conducted these investigations.  
+<br>
+```{r}
+myData %>% 
+  filter(Driver_Race_Ethnicity %in% c("Non-Hispanic White", "Non-Hispanic Black")) %>% 
+    group_by(Reason_for_Stop, Officer_Race, Was_a_Search_Conducted) %>% 
+      na.omit() %>% 
+      count %>% 
+      ggplot() +
+      geom_bar(aes(x = Officer_Race, fill = Reason_for_Stop, y = n/1000), stat = "identity") +
+      facet_wrap(~Was_a_Search_Conducted) +
+      scale_fill_discrete(name = "Reason for Stop") +
+      xlab("\nOfficer Race") +
+      ylab("Count (in thousands)\n") +
+      ggtitle("Summary of Stop Data of Non-Hispanic Black and White Drivers") +
+      theme(plot.title = element_text(size = 12, face = "bold", hjust = 0.5)) +
+      theme(axis.title=element_text(size=14, face="bold"),
+      legend.text=element_text(size=2)) +
+      theme(legend.title.align=0.5) +
+      theme_bw() +
+      theme(axis.text.x=element_text(size = 7, angle = 90, hjust = 0))
+```
+
+**Thus, we observe that the major reasons for stopping for Non-Hispanic White and Non-Hispanic Black drivers were also *vehicle regulatory* and *speeding*.** Thus, there is no major outlier in this data.  
